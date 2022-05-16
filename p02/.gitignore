@@ -1,0 +1,8 @@
+parser
+parser.exe
+parser.exe*
+lex.yy.*
+y.tab.*
+.vscode
+
+*.txt

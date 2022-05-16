@@ -1,7 +1,7 @@
 all: parser
 
 parser: y.tab.cc lex.yy.cc symbols.cc symbols.hh
-	g++ -o parser y.tab.cc lex.yy.cc symbols.cc -lfl -ly 
+	g++ -o parser y.tab.cc lex.yy.cc symbols.cc -ll -ly 
 
 lex.yy.cc: scanner.l
 	flex -o lex.yy.cc scanner.l
