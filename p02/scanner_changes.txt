@@ -1,0 +1,15 @@
+Variable names changes
+- tokenOper() -> tokenChar()
+
+Modifications
+- Some Reg definitions are split to be able to handle compound operators separately
+- {INTEGER} Reg definition added with [-\+]? to handle negative integers
+- moved some C declarations & code to separate files (symbols.hh & symbols.cc)
+- rearrangements of code
+- strsplice() function removed, string splicing done without addtional function (observed at {STRING})
+- added "return" statements to work with YACC
+
+Additions
+- tokenDchar(): used for compound operators
+- option to toggle whether to print out tokens or not
+- added 1 new reserved keywords ("in") & 1 compound operator ("..") to handle FOR LOOP

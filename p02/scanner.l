@@ -6,13 +6,17 @@
     #define MAX_LINE_LENG 256
     #define LIST strcat(buf,yytext)
     
-    #define token(t) {LIST; printf("\t<%s>\n",#t);}
-    #define tokenChar(t) {LIST; printf("\t<'%c'>\n", t);}
-    #define tokenInteger(t,i) {LIST; printf("\t<%s: %d>\n",#t,atoi(i));}
-    #define tokenString(t,s) {LIST; printf("\t<%s: %s>\n",#t,s);}
+    #define token(t) {LIST; if(token_flag) printf("\t<%s>\n",#t); return t;}
+    #define tokenChar(t) {LIST; if(token_flag) printf("\t<'%c'>\n", t); return t;} 
+    #define tokenDChar(t) {LIST; if(token_flag) printf("\t<'%s'>\n", #t);}
+    #define tokenInteger(t,i) {LIST; if(token_flag) printf("\t<%s: %d>\n",#t,atoi(i));}
+    #define tokenString(t,s) {LIST; if(token_flag) printf("\t<%s: %s>\n",#t,s);}
+    
+    bool token_flag = false;
+    bool srcCode_flag = false;
+
     int linenum = 0;
     char buf[MAX_LINE_LENG];
-
 %}
 
 LINECOMMENT     (\/\/.*)
@@ -38,30 +42,30 @@ BOOLEAN         ("true"|"false")
 
 %%
  /* reserved keywords */
-"bool"          {token(BOOL); return BOOL; }
-"break"         {token(BREAK); return BREAK; }
-"char"          {token(CHAR); return CHAR; }
-"case"          {token(CASE); return CASE; }
-"class"         {token(CLASS); return CLASS; }
-"continue"      {token(CONTINUE); return CONTINUE; }
-"declare"       {token(DECLARE); return DECLARE; }
-"do"            {token(DO); return DO; }
-"else"          {token(ELSE); return ELSE; }
-"exit"          {token(EXIT); return EXIT; }
-"float"         {token(FLOAT); return FLOAT; }
-"for"           {token(FOR); return FOR; }
-"fun"           {token(FUN); return FUN; }
-"if"            {token(IF); return IF; }
-"in"            {token(IN); return IN; }
-"int"           {token(INT); return INT; }
-"loop"          {token(LOOP); return LOOP; }
-"print"         {token(PRINT); return PRINT; }
-"println"       {token(PRINTLN); return PRINTLN; }
-"return"        {token(RETURN); return RETURN; }
-"string"        {token(STRING); return STRING; }
-"val"           {token(VAL); return VAL; }
-"var"           {token(VAR); return VAR; }
-"while"         {token(WHILE); return WHILE; }
+"bool"          {token(BOOL); }
+"break"         {token(BREAK); }
+"char"          {token(CHAR); }
+"case"          {token(CASE); }
+"class"         {token(CLASS); }
+"continue"      {token(CONTINUE); }
+"declare"       {token(DECLARE); }
+"do"            {token(DO); }
+"else"          {token(ELSE); }
+"exit"          {token(EXIT); }
+"float"         {token(FLOAT); }
+"for"           {token(FOR); }
+"fun"           {token(FUN); }
+"if"            {token(IF); }
+"in"            {token(IN); }   // added for FOR LOOP
+"int"           {token(INT); }
+"loop"          {token(LOOP); }
+"print"         {token(PRINT); }
+"println"       {token(PRINTLN); }
+"return"        {token(RETURN); }
+"string"        {token(STRING); }
+"val"           {token(VAL); }
+"var"           {token(VAR); }
+"while"         {token(WHILE); }
 
  /* single operators */
 {DELIMITER}     |
@@ -69,19 +73,19 @@ BOOLEAN         ("true"|"false")
 {REMAINDER}     |
 {ASSIGMENT}     |
 {LOGICAL}       |
-{RELATIONAL}    {tokenChar(yytext[0]); return yytext[0];}
+{RELATIONAL}    {tokenChar(yytext[0]); }
 
  /* compound operators */
-".."            {token(..); return RANGE;}
-">="            {token(>=); return GE;}
-"<="            {token(<=); return LE;}
-"=="            {token(==); return EQ;}
-"!="            {token(!=); return NEQ;}
-"+="            {token(+=); return ADD;}
-"-="            {token(-=); return SUB;}
-"*="            {token(*=); return MUL;}
-"/="            {token(/=); return DIV;}
-"->"            {token(->); return ARROW;}
+".."            {tokenDChar(..); return RANGE;} // Added for FOR LOOP
+">="            {tokenDChar(>=); return GE;}
+"<="            {tokenDChar(<=); return LE;}
+"=="            {tokenDChar(==); return EQ;}
+"!="            {tokenDChar(!=); return NEQ;}
+"+="            {tokenDChar(+=); return ADD;}
+"-="            {tokenDChar(-=); return SUB;}
+"*="            {tokenDChar(*=); return MUL;}
+"/="            {tokenDChar(/=); return DIV;}
+"->"            {tokenDChar(->); return ARROW;}
 
 {BOOLEAN}       {
                     tokenString(BOOL, yytext);
@@ -128,14 +132,14 @@ BOOLEAN         ("true"|"false")
 <COMMENT>[^\n]  {LIST;}
 <COMMENT>\n     {
                     LIST;
-                    printf("%d: %s", ++linenum, buf);
+                    if(srcCode_flag) printf("%d: %s", ++linenum, buf);
                     buf[0] = '\0';
                 }
 <COMMENT>{ENDCOMMENT}   {LIST; BEGIN 0;}
 
 \n              {
                     LIST;
-                    printf("%d: %s", ++linenum, buf);
+                    if(srcCode_flag) printf("%d: %s", ++linenum, buf);
                     buf[0] = '\0';
                 }
 

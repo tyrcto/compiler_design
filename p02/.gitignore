@@ -4,5 +4,4 @@ parser.exe*
 lex.yy.*
 y.tab.*
 .vscode
-
-*.txt
+makefile

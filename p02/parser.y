@@ -1,15 +1,20 @@
 %{
     #include <iostream>
     #include "symbols.hh"
-    #define Trace(t)        {printf("===TRACE=> %s\n", t);}
+    #define Trace(t)        {if (trace_flag)printf("=====TRACE=====\n> %s\n", t);}
+
+    // Optional printing flags
+    bool trace_flag = true;
+    bool dump_flag = true;
 
     int yyerror(std::string s);
     extern int yylex();
     extern FILE *yyin;
     extern char* yytext;
     extern int linenum;
-    SymbolTableList symbolTable;
-    vector<vector<IDInfo> > fCalls;
+    
+    SymbolTableList symbolTable;        
+    vector<vector<IDInfo> > fCalls;     // used for function invocations/calls
 %}
 
 %union {
@@ -21,7 +26,9 @@
     IDInfo* info;
 }
 
+ /*Compound operator tokens */
 %token GE LE EQ NEQ ADD SUB MUL DIV ARROW
+ /* Additional tokens to support FOR LOOP */
 %token IN RANGE
 %token BOOL BREAK CHAR CASE CLASS CONTINUE DECLARE DO ELSE EXIT FLOAT FOR FUN IF INT LOOP PRINT PRINTLN RETURN STRING VAL VAR WHILE
 
@@ -45,60 +52,98 @@
 %type <type> var_type opt_ret_type
 
 %%
-program:        class_dec
+/* Program unit */
+program:        opt_class_dec
                 {
                     Trace("Reducing to program\n");
-                    symbolTable.dump();
-                }
-                ;
+                    if(dump_flag)symbolTable.dump();
+                    symbolTable.pop();
+                };
 
+/* 1 or Multiple classes */
+opt_class_dec:  class_dec opt_class_dec
+                | /* empty symbol */;
+
+/* Class declaration */
 class_dec:      CLASS ID 
                 {
+                    Trace("Class declaration");
+
                     IDInfo *info = new IDInfo();
                     info->flag = CLASS_FLAG;
-                    if(!symbolTable.insert(*$2, *info)) yyerror("function redefinition");
+                    if(!symbolTable.insert(*$2, *info)) yyerror("Class redefinition");
+                
+                    symbolTable.push();     // Class scope
                 }
                 '{' opt_var_dec opt_fun_dec '}'
                 {
-                    Trace("Class declaration");
-                }
-                ;
+                    /* Class must have at least 1 method (i.e. main method) */
+                    IDInfo *mainMethod = symbolTable.lookup("main"); 
+                    if(!mainMethod || mainMethod->flag != FUNCTION_FLAG) yyerror("No [main] method found");
 
+                    if(trace_flag) symbolTable.dump();
+                    symbolTable.pop();
+                };
+
+/* 1 or Multiple Functions */
 opt_fun_dec:    fun_dec opt_fun_dec
-                | /* zero */
-                ;
+                | /* empty symbol */;
 
+/* Function declaration*/
 fun_dec:        FUN ID 
                 {
+                    Trace("Function declaration");
                     IDInfo* info = new IDInfo();
+                    
                     info->flag = FUNCTION_FLAG;
                     if(!symbolTable.insert(*$2, *info)) yyerror("Function redefinition");
-                    symbolTable.push();
+
+                    symbolTable.push(); // Function scope
                 }
                 '(' opt_args ')' opt_ret_type block
                 {
-                    Trace("Function declaration");
-
-                    symbolTable.dump();
+                    if(dump_flag)symbolTable.dump();
                     symbolTable.pop();
-                }
-                ;
+                };
 
+/* Optional formal arguments */
+opt_args:       args
+                | /* empty symbol */;
+
+/* 1 or Multiple arguments */
+args:           arg ',' args
+                |arg;
+
+/* Only 1 argument */
+arg:           ID ':' var_type
+                {
+                    Trace("Function formal arguments");
+
+                    IDInfo* info = new IDInfo();
+                    info->flag = VAR_FLAG;
+                    info->type = $3;    // Assign var type to ID
+                    if(!symbolTable.insert(*$1, *info)) yyerror("Duplicate arguments");
+
+                    symbolTable.addFuncArg(*$1, *info); // add argument to current pointed function
+                };
+
+/* Function's optional return type */
 opt_ret_type:   ':' var_type
                 {   
                     Trace("Set function return type");
                     symbolTable.setFuncType($2);
                 }
-                | /* void return type (function procedure) */
+                | /* void return type (a.k.a. function procedure) */
                 {
-                    Trace("Set function return type");
+                    Trace("Set function return type to VOID");
                     symbolTable.setFuncType(VOID_TYPE);
-                }
+                };
 
 statement:      simple
+                | block
                 | conditional
                 | loop
-                ;
+                | fun_invocation;
 
 loop:           WHILE '(' expr ')' block_or_simp
                 {
@@ -109,8 +154,7 @@ loop:           WHILE '(' expr ')' block_or_simp
                 {
                     Trace("For loop");
                     if($5 > $7) yyerror("Loop range is in descending order");
-                }
-                ;
+                };
 
 conditional:    IF expr block_or_simp ELSE block_or_simp
                 {
@@ -121,10 +165,10 @@ conditional:    IF expr block_or_simp ELSE block_or_simp
                 {
                     Trace("IF block");
                     if($2->type != BOOL_TYPE) yyerror("Expression not a boolean");
-                }
-                ;
+                };
 
-block_or_simp:  block|simple;
+ /* Provide option for either block or simple statements */
+block_or_simp:  block | simple;
 
 simple:         ID '=' expr
                 {
@@ -138,8 +182,14 @@ simple:         ID '=' expr
                 }
                 | ID '[' expr ']' '=' expr
                 {
-                    Trace("Array indexing");
+                    Trace("Array indexing assigment");
+                    IDInfo *info = new IDInfo();
+                    if(!info) yyerror("Undeclared identifier");
+                    if(info->flag != VAR_FLAG) yyerror("Not a variable");
+                    if(info->type != ARRAY_TYPE) yyerror("Not an array");
                     if($3->type != INT_TYPE) yyerror("Array index not of integer type");
+                    if($3->value.i >= info->value.arr.size() || $3->value.i < 0) yyerror("Index out of range");
+                    if(info->value.arr[0].type != $6->type) yyerror("Types are incompatible");
                 }
                 | PRINT expr
                 {
@@ -156,20 +206,21 @@ simple:         ID '=' expr
                 | RETURN expr
                 {
                     Trace("Return expression");
-                }
-                ;
+                };
 
+/* Serves as both function expression and procedure */
 fun_invocation: ID 
                 {
+                    Trace("Function invoked");
                     fCalls.push_back(vector<IDInfo>());
                 }
-                '(' opt_expr ')'
+                '(' opt_comma_sep ')'
                 {
-                    Trace("Function invoked");
                     IDInfo* info = symbolTable.lookup(*$1);
                     if(!info) yyerror("Undeclared identifier");
                     if(info->flag != FUNCTION_FLAG) yyerror("Not a function");
 
+                    // Check whether num of parameters is equal
                     vector<IDInfo> params = info->value.arr;
                     if(params.size() != fCalls[fCalls.size()-1].size()) yyerror("Number of parameters do not match");
                     for(int i=0;i< params.size();i++){
@@ -177,14 +228,23 @@ fun_invocation: ID
                     }
                     $$ = info;
                     fCalls.pop_back();
-                }
-                ;
+                };
 
-opt_expr: expr ',' opt_expr
-                |expr
-                | /* zero */
-                ;
+/* Optional comma separated function expressions as parameters */
+opt_comma_sep:  comma_sep_expr
+                | /* empty symbol */;
 
+/* 1 or Multiple function expressions */
+comma_sep_expr: fun_expr ',' comma_sep_expr
+                | fun_expr;
+
+/* Only 1 function expression */
+fun_expr:       expr
+                {
+                    fCalls[fCalls.size()-1].push_back(*$1);
+                };
+
+/* All possible expresions */
 expr:           const_val
                 | ID
                 {
@@ -193,11 +253,36 @@ expr:           const_val
                     if(!info) yyerror("Undeclared identifier");
                     $$ = info;
                 }
+                | ID '[' expr ']'
+                {
+                    IDInfo *info = symbolTable.lookup(*$1);
+                    if(!info) yyerror("Undeclared identifier");
+                    if(info->type != ARRAY_TYPE) yyerror("Identifier is not an array");
+                    if($3->type != INT_TYPE) yyerror("Array index not of integer type");
+                    if($3->value.i >= info->value.arr.size() || $3->value.i < 0) yyerror("Index out of range");
+                    $$ = new IDInfo(info->value.arr[$3->value.i]);
+                }
                 | fun_invocation
+                {
+                    Trace("Function as expression");
+                }
+                | '-' expr %prec UMINUS
+                {
+                    Trace("Unary Minus Expression");
+
+                    // Makes sure type is either INT or REAL, otherwise impossible(error)
+                    if(!($2->type == INT_TYPE || $2->type == REAL_TYPE)) yyerror("Operator error");
+                    
+                    IDInfo* info = new IDInfo();
+                    info->type = $2->type;
+                    $$ = info;
+                }
                 | expr '+' expr
                 {
-                    Trace("E + E");
-                    if($1->type!=$3->type) yyerror("Expression types incompatible");
+                    Trace("Expression + Expression");
+                    
+                    if($1->type!=$3->type) yyerror("Expression types incompatible");    // Type must be compatible to perform operation
+                    if(!($1->type == INT_TYPE || $1->type == REAL_TYPE)) yyerror("Operator error");
                     
                     IDInfo *info = new IDInfo();
                     info->type = $1->type;
@@ -205,8 +290,10 @@ expr:           const_val
                 }
                 | expr '-' expr
                 {
-                    Trace("E - E");
+                    Trace("Expression - Expression");
+
                     if($1->type!=$3->type) yyerror("Expression types incompatible");
+                    if(!($1->type == INT_TYPE || $1->type == REAL_TYPE)) yyerror("Operator error");
                     
                     IDInfo *info = new IDInfo();
                     info->type = $1->type;
@@ -214,8 +301,9 @@ expr:           const_val
                 }
                 | expr '*' expr
                 {
-                    Trace("E * E");
+                    Trace("Expression * Expression");
                     if($1->type != $3->type) yyerror("Expression types incompatible");
+                    if(!($1->type == INT_TYPE || $1->type == REAL_TYPE)) yyerror("Operator error");
                     
                     IDInfo *info = new IDInfo();
                     info->type = $1->type;
@@ -223,9 +311,10 @@ expr:           const_val
                 }
                 | expr '/' expr
                 {
-                    Trace("E / E");
-                    if($3 == 0) yyerror("Division by 0");
+                    Trace("Expression/ Expression");
+                    if($3 == 0) yyerror("Division by 0");   // Divisor must not equal 0
                     if($1->type!=$3->type) yyerror("Expression types incompatible");
+                    if(!($1->type == INT_TYPE || $1->type == REAL_TYPE)) yyerror("Operator error");
 
                     IDInfo *info = new IDInfo();
                     info->type = $1->type;
@@ -233,64 +322,89 @@ expr:           const_val
                 }
                 | expr '<' expr
                 {
-                    Trace("E < E");
+                    Trace("Expression < Expression");
+                    
                     if($1->type != $3->type) yyerror("Expression types incompatible");
+                    if(!($1->type == INT_TYPE || $1->type == REAL_TYPE)) yyerror("Operator error");
+
                     IDInfo *info = new IDInfo();
                     info->type = BOOL_TYPE;
                     $$ = info;
                 }
                 | expr LE expr
                 {
-                    Trace("E <= E");
+                    Trace("Expression <= Expression");
+
                     if($1->type != $3->type) yyerror("Expression types incompatible");
+                    if(!($1->type == INT_TYPE || $1->type == REAL_TYPE)) yyerror("Operator error");
+
                     IDInfo *info = new IDInfo();
                     info->type = BOOL_TYPE;
                     $$ = info;
                 }
                 | expr '>' expr
                 {
-                    Trace("E > E");
+                    Trace("Expression > Expression");
                     if($1->type != $3->type) yyerror("Expression types incompatible");
+                    if(!($1->type == INT_TYPE || $1->type == REAL_TYPE)) yyerror("Operator error");
+
                     IDInfo *info = new IDInfo();
                     info->type = BOOL_TYPE;
                     $$ = info;
                 }
                 | expr GE expr
                 {
-                    Trace("E >= E");
+                    Trace("Expression >= Expression");
                     if($1->type != $3->type) yyerror("Expression types incompatible");
+                    if(!($1->type == INT_TYPE || $1->type == REAL_TYPE)) yyerror("Operator error");
+
                     IDInfo *info = new IDInfo();
                     info->type = BOOL_TYPE;
                     $$ = info;
                 }
                 | expr EQ expr
                 {
-                    Trace("E == E");
+                    Trace("Expression == Expression");
                     if($1->type != $3->type) yyerror("Expression types incompatible");
+
                     IDInfo *info = new IDInfo();
                     info->type = BOOL_TYPE;
                     $$ = info;
                 }
                 | expr NEQ expr
                 {
-                    Trace("E != E");
+                    Trace("Expression != Expression");
                     if($1->type != $3->type) yyerror("Expression types incompatible");
+
                     IDInfo *info = new IDInfo();
+                    info->type = BOOL_TYPE;
+                    $$ = info;
+                }
+                | '!' expr
+                {
+                    Trace("Not Expression");
+                    if($2->type != BOOL_TYPE) yyerror("Not a boolean");     // Must be of boolean type to be able to inverse the result
+
+                    IDInfo* info = new IDInfo();
                     info->type = BOOL_TYPE;
                     $$ = info;
                 }
                 | expr '&' expr
                 {
-                    Trace("E & E");
+                    Trace("Expression AND Expression");
+
                     if($1->type != $3->type) yyerror("Expression types incompatible");
+
                     IDInfo *info = new IDInfo();
                     info->type = BOOL_TYPE;
                     $$ = info;
                 }
                 | expr '|' expr
                 {
-                    Trace("E | E");
+                    Trace("Expression OR Expression");
+
                     if($1->type != $3->type) yyerror("Expression types incompatible");
+
                     IDInfo *info = new IDInfo();
                     info->type = BOOL_TYPE;
                     $$ = info;
@@ -299,63 +413,49 @@ expr:           const_val
                 {
                     Trace("(expression) in parentheses");
                     $$ = $2;
-                }
-                | '-' expr %prec UMINUS
+                };
+
+/* Block statement */
+block:          '{' 
                 {
-                    Trace("Negate E");
-                    if($2->type != INT_TYPE || $2->type != REAL_TYPE) yyerror("Cannot negate type");
-                    IDInfo* info = new IDInfo();
-                    info->type = $2->type;
-                    $$ = info;
+                    Trace("Block statement");
+                    symbolTable.push();             // Block scope
                 }
-                ;
-
-opt_statements: statement opt_statements
-                | /* zero */
-                ;
-
-block:          '{' opt_statements '}'
+                opt_var_dec opt_statement '}'       // Can have any number of variable/const declarations and/or statements
                 {
-                    Trace("Simple statement inside block");
-                }
-                ;
+                    if(dump_flag)symbolTable.dump();
+                    symbolTable.pop();              // Leave block scope
+                };
 
-opt_args:       args opt_args
-                | /* zero */
-                ;
+/* 1 or Multiple statements */
+opt_statement:  statement opt_statement
+                | /* empty symbol */;
 
-args:           args ',' args
-                |ID ':' var_type
-                {
-                    Trace("Function formal arguments");
-                    IDInfo* info = new IDInfo();
-                    info->flag = VAR_FLAG;
-                    info->type = $3;
-                    if(!symbolTable.insert(*$1, *info)) yyerror("Duplicate arguments");
-                }
-                ;
-
+/* 1 or Multiple const/var declarations */
 opt_var_dec:    const_dec opt_var_dec
                 | var_dec opt_var_dec
-                | /* zero */
-                ;
+                | /* empty symbol */;
 
+/* Constant declaration */
 const_dec:      VAL ID '=' const_val
                 {
                     Trace("Constant declaration");
+                    // type determined by assigned constant value
                     if(!symbolTable.insert(*$2, *$4)) yyerror("Const variable redefinition");
                 }
                 |VAL ID ':' var_type '=' const_val
                 {
                     Trace("Constant declaration with type");
-                    if($6->type != $4)yyerror("Wrong declared type");
-                    if(!symbolTable.insert(*$2, *$6)) yyerror("Const variable redefinition");
-                }
-                ;
 
+                    if($6->type != $4)yyerror("Wrong declared type");   // Must be correctly typed
+                    if(!symbolTable.insert(*$2, *$6)) yyerror("Const variable redefinition");
+                };
+
+/* Variable declaration */
 var_dec:        VAR ID ':' var_type
                 {
                     Trace("Variable declaration with type");
+
                     IDInfo *info = new IDInfo();
                     info->flag = VAR_FLAG;
                     if(!symbolTable.insert(*$2, *info)) yyerror("Variable redefinition");
@@ -366,55 +466,30 @@ var_dec:        VAR ID ':' var_type
                     $4->flag = VAR_FLAG;
                     if(!symbolTable.insert(*$2, *$4)) yyerror("Variable redefinition");
                 }
-                |VAR ID  var_type '=' const_val
+                |VAR ID  ':' var_type '=' const_val
                 {
-                    Trace("Variable declaration with const assignment");
-                    if($3 && $5->type != $3) yyerror("Wrong declared type");
-                    $5->flag = VAR_FLAG;
-                    if(!symbolTable.insert(*$2, *$5)) yyerror("Variable redefinition");
+                    Trace("Variable declaration with type and const assignment");
+                    if($6->type != $4) yyerror("Wrong declared type");
+                    $6->flag = VAR_FLAG;
+                    if(!symbolTable.insert(*$2, *$6)) yyerror("Variable redefinition");
                 }
                 |VAR ID ':' var_type '[' INT_CONST ']'
                 {
                     Trace("Array declaration with type");
                     if(!symbolTable.insert(*$2, $4, $6)) yyerror("Array redefinition");
-                }
-                ;
+                };
 
-var_type:       BOOL
-                {
-                    $$ = BOOL_TYPE;
-                }
-                |INT
-                {
-                    $$ = INT_TYPE;
-                }
-                |STRING
-                {
-                    $$ = STRING_TYPE;
-                }
-                |FLOAT
-                {
-                    $$ = REAL_TYPE;
-                }
-                ;
+/* Predefined Variable Types */
+var_type:       BOOL    { $$ = BOOL_TYPE;}
+                | INT    { $$ = INT_TYPE; }
+                | STRING { $$ = STRING_TYPE; }
+                | FLOAT  { $$ = REAL_TYPE; };
 
-const_val:      BOOL_CONST
-                {
-                    $$ = BOOLConst($1);
-                }
-                |INT_CONST
-                {
-                    $$ = INTConst($1);
-                    cout << "Int val:" << $1 << endl;
-                }
-                | REAL_CONST
-                {
-                    $$ = REALConst($1);
-                }
-                |STR_CONST
-                {
-                    $$ = STRConst($1);
-                }
+/* Const values types */
+const_val:      BOOL_CONST      { $$ = BOOLConst($1); }
+                | INT_CONST     { $$ = INTConst($1); }
+                | REAL_CONST    { $$ = REALConst($1); }
+                | STR_CONST     { $$ = STRConst($1); };
 
 %%
 int yyerror(std::string s)
@@ -426,11 +501,9 @@ int yyerror(std::string s)
 
 int main(int argc, char* argv[])
 {
-    // yyparse();
-    // return 0;
-      /* open the source program file */
-    if (argc < 2) {
-        printf ("Usage: sc filename\n");
+    /* open the source program file */
+    if (argc != 2) {
+        printf ("Prorgam usage: parser <filename>\n");
         exit(1);
     }
     yyin = fopen(argv[1], "r");         /* open input file */
