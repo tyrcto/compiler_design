@@ -6,14 +6,14 @@
     #define MAX_LINE_LENG 256
     #define LIST strcat(buf,yytext)
     
-    #define token(t) {LIST; if(token_flag) printf("\t<%s>\n",#t); return t;}
-    #define tokenChar(t) {LIST; if(token_flag) printf("\t<'%c'>\n", t); return t;} 
-    #define tokenDChar(t) {LIST; if(token_flag) printf("\t<'%s'>\n", #t);}
-    #define tokenInteger(t,i) {LIST; if(token_flag) printf("\t<%s: %d>\n",#t,atoi(i));}
-    #define tokenString(t,s) {LIST; if(token_flag) printf("\t<%s: %s>\n",#t,s);}
+    #define token(t) {LIST; if(token_flag) printf("<%s>\n",#t); return t;}
+    #define tokenChar(t) {LIST; if(token_flag) printf("<'%c'>\n", t); return t;} 
+    #define tokenDChar(t) {LIST; if(token_flag) printf("<'%s'>\n", #t);}
+    #define tokenInteger(t,i) {LIST; if(token_flag) printf("<%s: %d>\n",#t,atoi(i));}
+    #define tokenString(t,s) {LIST; if(token_flag) printf("<%s: %s>\n",#t,s);}
     
-    bool token_flag = false;
-    bool srcCode_flag = false;
+    bool token_flag = true;
+    bool srcCode_flag = true;
 
     int linenum = 0;
     char buf[MAX_LINE_LENG];
@@ -95,11 +95,11 @@ BOOLEAN         ("true"|"false")
                 }
 
 {STRING}        {
-                    char* s = new char[yyleng-1];
+                    char* s = new char[yyleng-2];
                     for (int i = 1, j=0; j < yyleng-2; i++, j++) {
                         s[j]= yytext[i];
                     }
-                    s[yyleng-1]='\0';
+                    s[yyleng-2]='\0';
                     tokenString(STRING, s);
                     yylval.sval = new string(s);
                     return STR_CONST;

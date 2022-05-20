@@ -1,7 +1,7 @@
 %{
     #include <iostream>
     #include "symbols.hh"
-    #define Trace(t)        {if (trace_flag)printf("=====TRACE=====\n> %s\n", t);}
+    #define Trace(t)        {if (trace_flag)printf("TRACE==> %s\n", t);}
 
     // Optional printing flags
     bool trace_flag = true;
@@ -94,7 +94,7 @@ fun_dec:        FUN ID
                 {
                     Trace("Function declaration");
                     IDInfo* info = new IDInfo();
-                    
+                    info->init = false;         // Is function return type stated?
                     info->flag = FUNCTION_FLAG;
                     if(!symbolTable.insert(*$2, *info)) yyerror("Function redefinition");
 
@@ -147,12 +147,12 @@ statement:      simple
 
 loop:           WHILE '(' expr ')' block_or_simp
                 {
-                    Trace("While loop");
+                    Trace("WHILE loop");
                     if($3->type != BOOL_TYPE) yyerror("Expression not a boolean");
                 }
                 | FOR '(' ID IN INT_CONST RANGE INT_CONST')' block_or_simp
                 {
-                    Trace("For loop");
+                    Trace("FOR loop");
                     if($5 > $7) yyerror("Loop range is in descending order");
                 };
 
@@ -172,17 +172,16 @@ block_or_simp:  block | simple;
 
 simple:         ID '=' expr
                 {
-                    Trace("ID assigment");
+                    Trace("Simple: ID assigment");
 
                     IDInfo *info = symbolTable.lookup(*$1); 
                     if(!info) yyerror("Undeclared identifier");
                     if(info->flag == CONST_FLAG) yyerror("Cannot re-assign value to constant variables");
                     if(info->flag == FUNCTION_FLAG) yyerror("Cannot assign value to functions");
-                    
                 }
                 | ID '[' expr ']' '=' expr
                 {
-                    Trace("Array indexing assigment");
+                    Trace("Simple: Array indexing assigment");
                     IDInfo *info = new IDInfo();
                     if(!info) yyerror("Undeclared identifier");
                     if(info->flag != VAR_FLAG) yyerror("Not a variable");
@@ -193,19 +192,20 @@ simple:         ID '=' expr
                 }
                 | PRINT expr
                 {
-                    Trace("Print expression");
+                    Trace("Simple: Print expression");
                 }
                 | PRINTLN expr
                 {
-                    Trace("Println expression");
+                    Trace("Simple: Println expression");
                 }
                 | RETURN
                 {
-                    Trace("Return");
+                    Trace("Simple: Return");
                 }
                 | RETURN expr
                 {
-                    Trace("Return expression");
+                    Trace("Simple: Return expression");
+                    if(!symbolTable.setFuncType($2->type)) yyerror("Return type does not match function return type");
                 };
 
 /* Serves as both function expression and procedure */
@@ -382,7 +382,7 @@ expr:           const_val
                 }
                 | '!' expr
                 {
-                    Trace("Not Expression");
+                    Trace("NOT Expression");
                     if($2->type != BOOL_TYPE) yyerror("Not a boolean");     // Must be of boolean type to be able to inverse the result
 
                     IDInfo* info = new IDInfo();
@@ -411,18 +411,19 @@ expr:           const_val
                 }
                 | '(' expr ')'
                 {
-                    Trace("(expression) in parentheses");
+                    Trace("(Expression) in parentheses");
                     $$ = $2;
                 };
 
 /* Block statement */
 block:          '{' 
                 {
-                    Trace("Block statement");
+                    Trace("Block statement start");
                     symbolTable.push();             // Block scope
                 }
                 opt_var_dec opt_statement '}'       // Can have any number of variable/const declarations and/or statements
                 {
+                    Trace("Block statement end");
                     if(dump_flag)symbolTable.dump();
                     symbolTable.pop();              // Leave block scope
                 };

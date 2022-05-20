@@ -20,9 +20,9 @@ enum type{
 // Variable types
 enum flag{
     CLASS_FLAG, 
+    FUNCTION_FLAG,
     VAR_FLAG,
-    CONST_FLAG,
-    FUNCTION_FLAG
+    CONST_FLAG
 };
 
 struct IDValue;
@@ -53,6 +53,7 @@ class SymbolTable{
         int entryCount;
         vector<string> symbols;
         map<string, IDInfo> sTable;
+
     public:
         SymbolTable();
         IDInfo* lookup(string s);
@@ -60,7 +61,7 @@ class SymbolTable{
         int dump();    
         
         // Function Utils
-        void setFuncType(int type);                 // set current pointed function return type
+        bool setFuncType(int type);                 // set current pointed function return type, return false if type was defined
         void addFuncArg(string id, IDInfo info);    // add necessary args to said function
 };
 
@@ -79,7 +80,7 @@ class SymbolTableList{
         bool pop();
 
         // Function Utils (pass over parameters to desired scope)
-        void setFuncType(int type);
+        bool setFuncType(int type);         // return false if type was defined
         void addFuncArg(string id, IDInfo info);
 };
 

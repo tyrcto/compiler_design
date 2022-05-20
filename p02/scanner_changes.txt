@@ -1,3 +1,8 @@
+=========================================
+=
+=	CHANGES
+=
+=========================================
 Variable names changes
 - tokenOper() -> tokenChar()
 
@@ -13,3 +18,20 @@ Additions
 - tokenDchar(): used for compound operators
 - option to toggle whether to print out tokens or not
 - added 1 new reserved keywords ("in") & 1 compound operator ("..") to handle FOR LOOP
+- Carriage return char ('\r') keeps breaking the code, hence it is added with [ \t] regex
+
+=========================================
+=
+=	NOTES
+=
+=========================================
+If "make" fails:
+flex -o lex.yy.cc scanner.l
+bison -y -o y.tab.cc -d parser.y
+g++ -o parser y.tab.cc lex.yy.cc symbols.cc -ll -ly 
+
+or
+
+lex -o lex.yy.cpp scanner.l
+yacc -o y.tab.cc -d parser.y 
+g++ -o parser y.tab.cc lex.yy.cc symbols.cc -ll -ly 

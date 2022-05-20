@@ -56,6 +56,7 @@ string IDInfo::getDesc(){
     return s;
 }
 
+// Symbol Table
 SymbolTable::SymbolTable(){     // constructor
     entryCount = 0;
 }
@@ -86,21 +87,27 @@ int SymbolTable::insert(string s, int type, int flag, IDValue val, bool init){
 
 int SymbolTable::dump(){
     cout << "Table entries: " << entryCount << endl;
-    cout << "<ID>\t<SYM>\t<TYPE>\t<FLAG>\t<VAL>\n";
+    if(entryCount)
+        cout << "<ID>\t<SYM>\t<TYPE>\t<FLAG>\t<VAL>\n";
     for(auto& entry:sTable){
         cout << entry.second.getDesc() <<endl;
     }
     return entryCount;
 }
 
-void SymbolTable::setFuncType(int type){
-    sTable[symbols[symbols.size()-1]].type = type;
+bool SymbolTable::setFuncType(int type){
+    IDInfo *check = &sTable[symbols[symbols.size()-1]]; 
+    if(!check->init && check->type != type) return false;
+    check->type = type;
+    check->init = true;
+    return true;
 }
 
 void SymbolTable::addFuncArg(string id, IDInfo info){
     sTable[symbols[symbols.size() - 1]].value.arr.push_back(info);
 }
 
+// Symbol Table List
 SymbolTableList::SymbolTableList(){
     top = -1;
     push();
@@ -150,8 +157,8 @@ int SymbolTableList::dump(){
     return top;
 }
 
-void SymbolTableList::setFuncType(int type){
-    list[top - 1].setFuncType(type);
+bool SymbolTableList::setFuncType(int type){
+    return list[top - 1].setFuncType(type);
 }
 
 void SymbolTableList::addFuncArg(string id, IDInfo info)
