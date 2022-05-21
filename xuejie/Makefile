@@ -7,8 +7,8 @@ WGD ?= -w
 LEX ?= flex
 BS ?= bison
 
-myyacc: lex.yy.cc myyacc.tab.cc
-	$(CC) -o $@ $^ $(WGD) -ll -ly
+myyacc: lex.yy.cc myyacc.tab.cc symbol.cpp symbol.hh
+	$(CC) -o myyacc lex.yy.cc symbol.cpp symbol.hh -ll -ly
 
 lex.yy.cc: scanner.l
 	$(LEX) -o lex.yy.cc $<

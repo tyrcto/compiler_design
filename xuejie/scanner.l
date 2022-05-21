@@ -1,8 +1,9 @@
 %{
+#include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "myyacc.tab.h"
+#include "myyacc.tab.hh"
 
 
 #define LIST strcat(buf,yytext)
@@ -95,8 +96,7 @@ id      {alpha}({alpha}|{digit})*
 
 {blank}*    {LIST;}
 {id}        { 
-                std::string temp = yytext;
-                yylval.stringVal = temp;
+                yylval.stringVal = new std::string(yytext);
                 token(ID);
             }
 {decimals}  { 
@@ -123,8 +123,7 @@ id      {alpha}({alpha}|{digit})*
 
 <STRING>\"      {
                     BEGIN 0;
-                    std::string temp = yytext;
-                    yylval.stringVal = temp;
+                    yylval.stringVal = new std::string(yytext);
                     token(STRING_VAL);
                 }                      
 <STRING>.         {LIST; strcat(strBuf, yytext);}

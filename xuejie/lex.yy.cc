@@ -1,6 +1,6 @@
-#line 1 "lex.yy.cc"
+#line 2 "lex.yy.cc"
 
-#line 3 "lex.yy.cc"
+#line 4 "lex.yy.cc"
 
 #define  YY_INT_ALIGNED short int
 
@@ -550,11 +550,11 @@ int yy_flex_debug = 0;
 char *yytext;
 #line 1 "scanner.l"
 #line 2 "scanner.l"
+#include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <iostream>
-#include "myyacc.tab.h"
+#include "myyacc.tab.hh"
 
 
 #define LIST strcat(buf,yytext)
@@ -572,9 +572,9 @@ void clearBUFF() {
     buf[0]='\0';
 }
 
-#line 575 "lex.yy.cc"
+#line 576 "lex.yy.cc"
 
-#line 577 "lex.yy.cc"
+#line 578 "lex.yy.cc"
 
 #define INITIAL 0
 #define BLOCK_COMMENT 1
@@ -796,7 +796,7 @@ YY_DECL
 	{
 #line 36 "scanner.l"
 
-#line 799 "lex.yy.cc"
+#line 800 "lex.yy.cc"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -1129,7 +1129,7 @@ case 54:
 YY_RULE_SETUP
 #line 98 "scanner.l"
 { 
-                yylval.stringVal = new string(yytext);
+                yylval.stringVal = new std::string(yytext);
                 token(ID);
             }
 	YY_BREAK
@@ -1204,30 +1204,26 @@ YY_RULE_SETUP
 #line 124 "scanner.l"
 {
                     BEGIN 0;
-                    int n = strlen(strBuf);
-                    char* temp = malloc(n +1);
-                    strncpy(temp, yytext, n);
-                    temp[n] = '\0';
-                    yylval.stringVal = temp;
+                    yylval.stringVal = new std::string(yytext);
                     token(STRING_VAL);
                 }                      
 	YY_BREAK
 case 67:
 YY_RULE_SETUP
-#line 133 "scanner.l"
+#line 129 "scanner.l"
 {LIST; strcat(strBuf, yytext);}
 	YY_BREAK
 case 68:
 YY_RULE_SETUP
-#line 134 "scanner.l"
+#line 130 "scanner.l"
 {LIST; strcat(strBuf, "\"");}
 	YY_BREAK
 case 69:
 YY_RULE_SETUP
-#line 136 "scanner.l"
+#line 132 "scanner.l"
 ECHO;
 	YY_BREAK
-#line 1230 "lex.yy.cc"
+#line 1227 "lex.yy.cc"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -2230,6 +2226,6 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 136 "scanner.l"
+#line 132 "scanner.l"
 
 

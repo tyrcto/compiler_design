@@ -1,5 +1,6 @@
 %{
 
+#include <iostream>
 #include <stdio.h>
 #include <string.h>
 #include "lex.yy.c"
@@ -11,9 +12,6 @@
 #define TYPE_INT 2
 #define TYPE_FLOAT 3
 #define TYPE_STRING 4
-extern int yylex();
-    extern FILE *yyin;
-    extern char* yytext;
 %}
 /** Start Rule **/
 %start program
@@ -21,7 +19,7 @@ extern int yylex();
 %union {
     int intVal;
     float floatVal;
-    char* stringVal;
+    std::string* stringVal;
 }
 
 // tokens
