@@ -95,10 +95,7 @@ id      {alpha}({alpha}|{digit})*
 
 {blank}*    {LIST;}
 {id}        { 
-                int n = yyleng;
-                char* temp = malloc(n +1);
-                strncpy(temp, yytext, n);
-                temp[n] = '\0';
+                std::string temp = yytext;
                 yylval.stringVal = temp;
                 token(ID);
             }
@@ -126,10 +123,7 @@ id      {alpha}({alpha}|{digit})*
 
 <STRING>\"      {
                     BEGIN 0;
-                    int n = strlen(strBuf);
-                    char* temp = malloc(n +1);
-                    strncpy(temp, yytext, n);
-                    temp[n] = '\0';
+                    std::string temp = yytext;
                     yylval.stringVal = temp;
                     token(STRING_VAL);
                 }                      
