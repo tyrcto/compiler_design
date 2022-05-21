@@ -7,20 +7,14 @@ WGD ?= -w
 LEX ?= flex
 BS ?= bison
 
-myyacc: lex.yy.o myyacc.o
-	$(CC) -o $@ $^ $(WGD)
+myyacc: lex.yy.cc myyacc.tab.cc
+	$(CC) -o $@ $^ $(WGD) -ll -ly
 
-lex.yy.c: scanner.l
+lex.yy.cc: scanner.l
 	$(LEX) -o lex.yy.cc $<
 
-myyacc.tab.c myyacc.tab.h: myyacc.y
-	$(BS) -d $<
-
-lex.yy.o: lex.yy.cc myyacc.tab.h
-	$(CC) -c $< -o $@ $(WGD)
-
-myyacc.o: myyacc.tab.cc myyacc.tab.h
-	$(CC) -c $< -o $@ $(WGD)
+myyacc.tab.cc myyacc.tab.h: myyacc.y
+	$(BS) -y -o myyacc.tab.cc -d $<
 
 test: myyacc
 	./myyacc ./example.kt

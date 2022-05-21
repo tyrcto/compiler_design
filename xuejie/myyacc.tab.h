@@ -1,9 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.8.2.  */
+/* A Bison parser, made by GNU Bison 3.0.4.  */
 
 /* Bison interface for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2021 Free Software Foundation,
-   Inc.
+   Copyright (C) 1984, 1989-1990, 2000-2015 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -16,7 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 /* As a special exception, you may create a larger work that contains
    part or all of the Bison parser skeleton and distribute that work
@@ -31,10 +30,6 @@
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
 
-/* DO NOT RELY ON FEATURES THAT ARE NOT DOCUMENTED in the manual,
-   especially those whose name start with YY_ or yy_.  They are
-   private implementation details that can be changed or removed.  */
-
 #ifndef YY_YY_MYYACC_TAB_H_INCLUDED
 # define YY_YY_MYYACC_TAB_H_INCLUDED
 /* Debug traces.  */
@@ -45,91 +40,87 @@
 extern int yydebug;
 #endif
 
-/* Token kinds.  */
+/* Token type.  */
 #ifndef YYTOKENTYPE
 # define YYTOKENTYPE
   enum yytokentype
   {
-    YYEMPTY = -2,
-    YYEOF = 0,                     /* "end of file"  */
-    YYerror = 256,                 /* error  */
-    YYUNDEF = 257,                 /* "invalid token"  */
-    DOT = 258,                     /* DOT  */
-    COMMA = 259,                   /* COMMA  */
-    COLON = 260,                   /* COLON  */
-    SEMICOLON = 261,               /* SEMICOLON  */
-    ARROW = 262,                   /* ARROW  */
-    PAR_L = 263,                   /* PAR_L  */
-    PAR_R = 264,                   /* PAR_R  */
-    SBRA_L = 265,                  /* SBRA_L  */
-    SBRA_R = 266,                  /* SBRA_R  */
-    BRA_L = 267,                   /* BRA_L  */
-    BRA_R = 268,                   /* BRA_R  */
-    ADD = 269,                     /* ADD  */
-    SUB = 270,                     /* SUB  */
-    MULT = 271,                    /* MULT  */
-    DIVIDE = 272,                  /* DIVIDE  */
-    PERCENT = 273,                 /* PERCENT  */
-    LE = 274,                      /* LE  */
-    LEEQ = 275,                    /* LEEQ  */
-    GR = 276,                      /* GR  */
-    GREQ = 277,                    /* GREQ  */
-    EQ = 278,                      /* EQ  */
-    NEQ = 279,                     /* NEQ  */
-    AND = 280,                     /* AND  */
-    OR = 281,                      /* OR  */
-    NOT = 282,                     /* NOT  */
-    ASSIGN = 283,                  /* ASSIGN  */
-    BOOLEAN = 284,                 /* BOOLEAN  */
-    BREAK = 285,                   /* BREAK  */
-    CHAR = 286,                    /* CHAR  */
-    CASE = 287,                    /* CASE  */
-    CLASS = 288,                   /* CLASS  */
-    CONTINUE = 289,                /* CONTINUE  */
-    DECLARE = 290,                 /* DECLARE  */
-    DO = 291,                      /* DO  */
-    ELSE = 292,                    /* ELSE  */
-    EXIT = 293,                    /* EXIT  */
-    FLOAT = 294,                   /* FLOAT  */
-    FOR = 295,                     /* FOR  */
-    FUN = 296,                     /* FUN  */
-    IF = 297,                      /* IF  */
-    INT = 298,                     /* INT  */
-    LOOP = 299,                    /* LOOP  */
-    PRINT = 300,                   /* PRINT  */
-    PRINTLN = 301,                 /* PRINTLN  */
-    RETURN = 302,                  /* RETURN  */
-    STRING = 303,                  /* STRING  */
-    VAL = 304,                     /* VAL  */
-    VAR = 305,                     /* VAR  */
-    WHILE = 306,                   /* WHILE  */
-    IN = 307,                      /* IN  */
-    ss = 308,                      /* ss  */
-    FALSE = 309,                   /* FALSE  */
-    TRUE = 310,                    /* TRUE  */
-    INT_VAL = 311,                 /* INT_VAL  */
-    FLOAT_VAL = 312,               /* FLOAT_VAL  */
-    STRING_VAL = 313,              /* STRING_VAL  */
-    ID = 314,                      /* ID  */
-    CUT = 315,                     /* CUT  */
-    UMINUS = 316                   /* UMINUS  */
+    DOT = 258,
+    COMMA = 259,
+    COLON = 260,
+    SEMICOLON = 261,
+    ARROW = 262,
+    PAR_L = 263,
+    PAR_R = 264,
+    SBRA_L = 265,
+    SBRA_R = 266,
+    BRA_L = 267,
+    BRA_R = 268,
+    ADD = 269,
+    SUB = 270,
+    MULT = 271,
+    DIVIDE = 272,
+    PERCENT = 273,
+    LE = 274,
+    LEEQ = 275,
+    GR = 276,
+    GREQ = 277,
+    EQ = 278,
+    NEQ = 279,
+    AND = 280,
+    OR = 281,
+    NOT = 282,
+    ASSIGN = 283,
+    BOOLEAN = 284,
+    BREAK = 285,
+    CHAR = 286,
+    CASE = 287,
+    CLASS = 288,
+    CONTINUE = 289,
+    DECLARE = 290,
+    DO = 291,
+    ELSE = 292,
+    EXIT = 293,
+    FLOAT = 294,
+    FOR = 295,
+    FUN = 296,
+    IF = 297,
+    INT = 298,
+    LOOP = 299,
+    PRINT = 300,
+    PRINTLN = 301,
+    RETURN = 302,
+    STRING = 303,
+    VAL = 304,
+    VAR = 305,
+    WHILE = 306,
+    IN = 307,
+    ss = 308,
+    FALSE = 309,
+    TRUE = 310,
+    INT_VAL = 311,
+    FLOAT_VAL = 312,
+    STRING_VAL = 313,
+    ID = 314,
+    CUT = 315,
+    UMINUS = 316
   };
-  typedef enum yytokentype yytoken_kind_t;
 #endif
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
+
 union YYSTYPE
 {
-#line 19 "myyacc.y"
+#line 21 "myyacc.y" /* yacc.c:1909  */
 
     int intVal;
     float floatVal;
     char* stringVal;
 
-#line 131 "myyacc.tab.h"
-
+#line 122 "myyacc.tab.h" /* yacc.c:1909  */
 };
+
 typedef union YYSTYPE YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
@@ -138,8 +129,6 @@ typedef union YYSTYPE YYSTYPE;
 
 extern YYSTYPE yylval;
 
-
 int yyparse (void);
-
 
 #endif /* !YY_YY_MYYACC_TAB_H_INCLUDED  */
