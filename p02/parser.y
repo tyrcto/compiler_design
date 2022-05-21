@@ -182,7 +182,7 @@ simple:         ID '=' expr
                 | ID '[' expr ']' '=' expr
                 {
                     Trace("Simple: Array indexing assigment");
-                    IDInfo *info = new IDInfo();
+                    IDInfo *info = symbolTable.lookup(*$1); 
                     if(!info) yyerror("Undeclared identifier");
                     if(info->flag != VAR_FLAG) yyerror("Not a variable");
                     if(info->type != ARRAY_TYPE) yyerror("Not an array");

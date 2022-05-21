@@ -1,5 +1,5 @@
 class test{
-    var a: float [10]
+    var a: int [10]
     var d: int = 1
     fun sayHi(){
         var i: int
@@ -9,5 +9,6 @@ class test{
     
     fun main(){
         sayHi()
+        a[1] = 1
     }
 }
