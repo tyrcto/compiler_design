@@ -7,10 +7,10 @@
 
 #define Trace(t) 	print(t)
 
-#define BOOL 1
-#define INT 2
-#define FLOAT 3
-#define STRING 4
+#define TYPE_BOOL 1
+#define TYPE_INT 2
+#define TYPE_FLOAT 3
+#define TYPE_STRING 4
 extern int yylex();
     extern FILE *yyin;
     extern char* yytext;
@@ -172,7 +172,6 @@ loop_stmt:WHILE PAR_L boolean_expr PAR_R
 //constant_exp
 constant_exp : INT_VAL{ 
          $$ = TYPE_INT;
-         int_value = $1;
        }
 	|FALSE|TRUE
 	|FLOAT_VAL
@@ -203,7 +202,7 @@ expr : PAR_L expr PAR_R { $$ = $2; }
 				 printf("variable TYPE error");
 			 }
 		 }else{
-			 printf("type are not equal, TYPE error")
+			 printf("type are not equal, TYPE error");
 		 }
 	  }
      | expr DIVIDE expr
@@ -214,7 +213,7 @@ expr : PAR_L expr PAR_R { $$ = $2; }
 				 printf("variable TYPE error");
 			 }
 		 }else{
-			 printf("type are not equal, TYPE error")
+			 printf("type are not equal, TYPE error");
 		 }
 	  }
 	 | expr PERCENT expr
@@ -225,7 +224,7 @@ expr : PAR_L expr PAR_R { $$ = $2; }
 				 printf("variable TYPE error");
 			 }
 		 }else{
-			 printf("type are not equal, TYPE error")
+			 printf("type are not equal, TYPE error");
 		 }
 	  }
      | expr ADD expr
@@ -236,7 +235,7 @@ expr : PAR_L expr PAR_R { $$ = $2; }
 				 printf("variable TYPE error");
 			 }
 		 }else{
-			 printf("type are not equal, TYPE error")
+			 printf("type are not equal, TYPE error");
 		 }
 	  }
 	 | expr LE expr
@@ -247,7 +246,7 @@ expr : PAR_L expr PAR_R { $$ = $2; }
 				 printf("variable TYPE error");
 			 }
 		 }else{
-			 printf("type are not equal, TYPE error")
+			 printf("type are not equal, TYPE error");
 		 }
 	  }
      | expr LEEQ expr
@@ -258,7 +257,7 @@ expr : PAR_L expr PAR_R { $$ = $2; }
 				 printf("variable TYPE error");
 			 }
 		 }else{
-			 printf("type are not equal, TYPE error")
+			 printf("type are not equal, TYPE error");
 		 }
 	  }
      | expr GR expr
@@ -269,7 +268,7 @@ expr : PAR_L expr PAR_R { $$ = $2; }
 				 printf("variable TYPE error");
 			 }
 		 }else{
-			 printf("type are not equal, TYPE error")
+			 printf("type are not equal, TYPE error");
 		 }
 	  }
 	 | expr GREQ expr
@@ -280,7 +279,7 @@ expr : PAR_L expr PAR_R { $$ = $2; }
 				 printf("variable TYPE error");
 			 }
 		 }else{
-			 printf("type are not equal, TYPE error")
+			 printf("type are not equal, TYPE error");
 		 }
 	  }
      | expr EQ expr
@@ -291,7 +290,7 @@ expr : PAR_L expr PAR_R { $$ = $2; }
 				 printf("variable TYPE error");
 			 }
 		 }else{
-			 printf("type are not equal, TYPE error")
+			 printf("type are not equal, TYPE error");
 		 }
 	  }
 	 | expr NEQ expr
@@ -302,7 +301,7 @@ expr : PAR_L expr PAR_R { $$ = $2; }
 				 printf("variable TYPE error");
 			 }
 		 }else{
-			 printf("type are not equal, TYPE error")
+			 printf("type are not equal, TYPE error");
 		 }
 	  }
 	 | expr AND expr
