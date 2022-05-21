@@ -1,13 +1,35 @@
-all: myyacc
+# all:
+# lex scanner.l
+# cc -o scanner -O lex.yy.c -ll
 
-myyacc: y.tab.cc lex.yy.cc symbol.cpp symbol.h
-	g++ -o myyacc y.tab.cc lex.yy.cpp symbol.cpp -lfl -ly 
+CC ?= gcc
+WGD ?= -w
+LEX ?= flex
+BS ?= bison
 
-lex.yy.cc: scanner.l
-	flex -o lex.yy.cc scanner.l
+myyacc: lex.yy.o myyacc.o
+	$(CC) -o $@ $^ $(WGD)
 
-y.tab.cc: myyacc.y
-	bison -y -o y.tab.cc -d myyacc.y
+lex.yy.c: scanner.l
+	$(LEX) -o lex.yy.c $<
 
+myyacc.tab.c myyacc.tab.h: myyacc.y
+	$(BS) -d $<
+
+lex.yy.o: lex.yy.c myyacc.tab.h
+	$(CC) -c $< -o $@ $(WGD)
+
+myyacc.o: myyacc.tab.c myyacc.tab.h
+	$(CC) -c $< -o $@ $(WGD)
+
+test: myyacc
+	./myyacc ./example.kt
+
+.PHONY: clean build
 clean:
-	rm myyacc lex.yy.cc y.tab.*
+	rm -f myyacc
+	rm -f *.o
+	rm -f lex.yy.c
+	rm -f myyacc.tab.[ch]
+
+build: myyacc
