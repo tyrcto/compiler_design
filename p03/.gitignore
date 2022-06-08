@@ -1,0 +1,12 @@
+*
+!compiler.cc
+!compiler.hh
+!symbols.cc
+!symbols.hh
+!makefile
+!parser.y
+!scanner.l
+!codegenerator*
+!javaaPortable/
+!javaaPortable/*
+!.gitignore
