@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 using namespace std;
 
@@ -12,13 +13,9 @@ enum type{
     BOOL_TYPE,
     INT_TYPE,
     STRING_TYPE,
+    VOID_TYPE ,          // for function procedures  (not return type)
     REAL_TYPE,
-    ARRAY_TYPE,
-    VOID_TYPE           // for function procedures  (not return type)
-};
-
-const string typeStr[] = {
-    "boolean", "int", "java.lang.String"
+    ARRAY_TYPE
 };
 
 // Variable types
@@ -39,18 +36,38 @@ struct IDValue{
     string s = "";          // string val
     vector<IDInfo> arr;     // array val
     string getArrDesc();    // output
-    vector<string> getArrTypes();
+    vector<int> getArrTypesID();
 };
 
 struct IDInfo{
     int id = 0;             
+    int funId = 0;
     string symbol ="";      // symbol name
     int type = INT_TYPE;    // data type
     int flag = VAR_FLAG;    // variable type
     IDValue value;          // value of var
     bool init = false;      // is value assigned to it?
+    int scope = -1;         // block scope in which it is defined
+    int funScope = -1;
     string getDesc();       // output
-    string getTypeStr();
+
+};
+
+static int localVarCount = 0;
+static map<int, int> funVarCount;
+
+class LabelController{
+    private:
+        map<int, vector<int>> activeLabel;
+        vector<int> usedLabel;
+        int last;
+    public:
+        LabelController();
+        bool checkLabel(int label);
+        bool checkScope(int scopeId);
+        int lookup(int scopeId);
+        int add(int scopeId);
+        void print();
 };
 
 class SymbolTable{
@@ -63,11 +80,12 @@ class SymbolTable{
     public:
         SymbolTable();
         IDInfo* lookup(string s);
-        int insert(string s, int type, int flag, IDValue val, bool init);
+        int insert(string s, int type, int flag, IDValue val, bool init, int scope, int funScope);
         int dump();    
         
         // Function Utils
-        bool setFuncType(int type);                 // set current pointed function return type, return false if type was defined
+        void setFuncType(int type);                 // set current pointed function return type, return false if type was defined
+        bool checkFuncType(int type);
         void addFuncArg(string id, IDInfo info);    // add necessary args to said function
 };
 
@@ -76,6 +94,8 @@ class SymbolTableList{
     private:
         vector<SymbolTable> list;
         int top;
+        LabelController label;
+        
     public:
         SymbolTableList();
         IDInfo* lookup(string s);
@@ -85,10 +105,15 @@ class SymbolTableList{
         void push();
         bool pop();
         bool isGlobal(string id);
+        inline int getTopVal(){return top;}
 
         // Function Utils (pass over parameters to desired scope)
-        bool setFuncType(int type);             // return false if type was defined
+        void setFuncType(int type);             // return false if type was defined
+        bool checkFuncType(int type);
         void addFuncArg(string id, IDInfo info);
+
+        int lookupLabel(int scope);
+        int addLabel(int scope);
 };
 
 // More utils for converting constant values

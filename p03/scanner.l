@@ -2,9 +2,10 @@
     using namespace std;
     #include "symbols.hh"
     #include "y.tab.hh"
+    #include <fstream>
 
     #define MAX_LINE_LENG 256
-    #define LIST strcat(buf,yytext)
+    #define LIST {strcat(buf,yytext); bufCounter+=yyleng;}
     
     #define token(t) {LIST; if(token_flag) printf("<%s>\n",#t); return t;}
     #define tokenChar(t) {LIST; if(token_flag) printf("<'%c'>\n", t); return t;} 
@@ -13,10 +14,24 @@
     #define tokenString(t,s) {LIST; if(token_flag) printf("<%s: %s>\n",#t,s);}
     
     bool token_flag = false;
-    bool srcCode_flag = true;
+    bool srcCode_flag = false;
 
     int linenum = 0;
     char buf[MAX_LINE_LENG];
+    int bufCounter = 0;
+    std::ofstream outFile;
+
+    void removeCommentTag(int opt){
+        std::string s(buf);
+        size_t pos;
+        if(opt==0) {pos = s.find("/*");}
+        else if(opt==1){pos = s.find("*/");}
+        else {pos = s.find("//");}
+        if(pos!=-1){
+            buf[pos] = ' ';
+            buf[pos + 1] = ' ';
+        }
+    }
 %}
 
 LINECOMMENT     (\/\/.*)
@@ -123,24 +138,39 @@ BOOLEAN         ("true"|"false")
                     return ID;
                 }
 
-{LINECOMMENT}   {LIST;}
+{LINECOMMENT}   {LIST; removeCommentTag(2);}
 {BEGINCOMMENT}  {
                     LIST; 
+                    removeCommentTag(0);
                     BEGIN (COMMENT);
                 }
 
 <COMMENT>[^\n]  {LIST;}
 <COMMENT>\n     {
+                    linenum++;
+                    if(srcCode_flag) printf("%d: %s", linenum, buf);
+                    buf[bufCounter-1]='\0';
+                    outFile << "/* " << to_string(linenum ) << ": " << buf << " */\n";
+
                     LIST;
-                    if(srcCode_flag) printf("%d: %s", ++linenum, buf);
                     buf[0] = '\0';
+                    bufCounter = 0;
                 }
-<COMMENT>{ENDCOMMENT}   {LIST; BEGIN 0;}
+<COMMENT>{ENDCOMMENT}   {
+                    LIST; 
+                    removeCommentTag(1);
+                    BEGIN 0;
+                }
 
 \n              {
-                    LIST;
+                    linenum++;
                     if(srcCode_flag) printf("%d: %s", ++linenum, buf);
+                    buf[bufCounter-1]='\0';
+                    outFile << "/* " << to_string(linenum) << ": " << buf << " */\n";
+
+                    LIST;
                     buf[0] = '\0';
+                    bufCounter = 0;
                 }
 
 [ \t\r]*          {LIST;}

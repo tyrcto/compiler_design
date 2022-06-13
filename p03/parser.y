@@ -6,18 +6,20 @@
     // Optional printing flags
     bool trace_flag = true;
     bool dump_flag = true;
-    int labelCount = 0;
+    int currFunID = -1;         // Keeps track of function scope
 
     int yyerror(std::string s);
     extern int yylex();
     extern FILE *yyin;
     extern char* yytext;
     extern int linenum;
+    extern ofstream outFile;
     
+    vector<bool>newScope;
+
     SymbolTableList symbolTable;        
     vector<vector<IDInfo> > fCalls;     // used for function invocations/calls
-    CodeGenerator generator;
-    vector<IDInfo> fFormal;
+    CodeGenerator generator(outFile);
 %}
 
 %union {
@@ -51,7 +53,7 @@
 %nonassoc UMINUS 
 
  /* Non-terminals */
-%type <info> const_val expr fun_invocation
+%type <info> const_val expr bool_expr fun_invocation
 %type <type> var_type opt_ret_type
 
 %%
@@ -84,7 +86,7 @@ class_dec:      CLASS ID
 
                     if(trace_flag) symbolTable.dump();
                     symbolTable.pop();
-                    generator.endBlock(0);
+                    generator.endBlock();
                 };
 
 /* 1 or Multiple Functions */
@@ -96,27 +98,32 @@ fun_dec:        FUN ID
                 {
                     Trace("Function declaration");
                     IDInfo* info = new IDInfo();
-                    info->init = false;         // Is function return type stated?
+                    info->init = false;                 // Is function return type stated? (defaulted to false)
                     info->flag = FUNCTION_FLAG;
                     int index = symbolTable.insert(*$2, *info);
                     if(!index) yyerror("Function redefinition");
-                    if(*$2 == "main"){
-                        // main function declared 
-                    }
-                    symbolTable.push(); // Function scope
+                    
+                    symbolTable.push();                 // Function scope
+                    generator.resetFunVarCount();
+                    currFunID++;
                 }
-                '(' opt_args ')'
+                '(' opt_args ')' opt_ret_type
                 {
+                    // Create code gen for method/function with corresponding formal arguments
                     IDInfo* info = symbolTable.lookup(*$2);
-                    vector<string> paramTypes = info->value.getArrTypes();
+                    vector<int> argTypes = info->value.getArrTypesID();
+                    generator.createMethod(*$2, info->type, argTypes);
 
-                    generator.createMethod(*$2, paramTypes);
-                    fFormal.clear();    // clear for next function's formal arguments
-                } opt_ret_type block
+                }  block
                 {
                     if(dump_flag)symbolTable.dump();
                     symbolTable.pop();
-                    generator.endBlock(1);
+
+                    IDInfo* info = symbolTable.lookup(*$2);
+                    if(info->type == VOID_TYPE){
+                        generator.write("return");
+                    }
+                    generator.endBlock();
                 };
 
 /* Optional formal arguments */
@@ -135,10 +142,9 @@ arg:           ID ':' var_type
                     IDInfo* info = new IDInfo();
                     info->flag = VAR_FLAG;
                     info->type = $3;    // Assign var type to ID
-                    int index = symbolTable.insert(*$1, *info);
-                    if(!index) yyerror("Duplicate arguments");
-                    
-                    symbolTable.addFuncArg(*$1, *info); // add argument to current pointed function
+                    info->funScope = currFunID;
+
+                    if(!symbolTable.insert(*$1, *info)) yyerror("Duplicate arguments");
                 };
 
 /* Function's optional return type */
@@ -159,52 +165,94 @@ statement:      simple
                 | loop
                 | fun_invocation;
 
-loop:           WHILE '(' expr ')' block_or_simp
-                {
+loop:           WHILE  {
                     Trace("WHILE loop");
-                    if($3->type != BOOL_TYPE) yyerror("Expression not a boolean");
+                    int label = symbolTable.addLabel(0);
+                    generator.createWhileStart(label);
+                    
+                } '(' bool_expr ')' {
+                    
+                    int label = symbolTable.lookupLabel(0);
+                    generator.createWhileMid(label);
+
+                } block_or_simp_alt {
+                    
+                    if($4->type != BOOL_TYPE) yyerror("Expression not a boolean");
+                    
+                    int label = symbolTable.lookupLabel(0);
+                    generator.createWhileEnd(label);
                 }
-                | FOR '(' ID IN INT_CONST RANGE INT_CONST')' block_or_simp
-                {
+                | FOR '(' ID IN INT_CONST RANGE INT_CONST')' {
+
                     Trace("FOR loop");
+
+                    IDInfo* info = new IDInfo();
+                    info->type = INT_TYPE;
+                    info->flag = VAR_FLAG;
+                    info->value.i = $5;
+                    info->funScope = currFunID;
+
+                    if(!symbolTable.insert(*$3, *info)) yyerror("Variable redefinition");
+                    int index = symbolTable.lookup(*$3)->funId;
+
+                    int label = symbolTable.addLabel(0);
+                    // init for loop increment variable to $5
+                    generator.loadInt($5);
+                    generator.createLocalVar(*$3, currFunID, index, true);
+                    generator.createForStart(currFunID, index, $7, label);
+
+                } block_or_simp_alt{
+
                     if($5 > $7) yyerror("Loop range is in descending order");
+                    int index = symbolTable.lookup(*$3)->funId;
+
+                    int label = symbolTable.lookupLabel(0);
+                    generator.createForEnd(currFunID, index, label);
                 };
 
-conditional:    IF expr if_start
-                block_or_simp ELSE 
+/* Alternative option for Loop blocks */
+block_or_simp_alt:      /* empty */
                 {
-                    labelCount--;
-                    generator.write("goto Lexit"+to_string(labelCount));
-                    generator.subFrame();
-                    generator.write("Lfalse" + to_string(labelCount)+":");
-                    generator.addFrame();
-                } block_or_simp
+                    Trace("Enter for scope");
+                    newScope.push_back(true);
+                    symbolTable.push();             // New scope
+                } block_or_simp 
                 {
+                    Trace("Leaving for scope");
+                    symbolTable.pop();
+                    newScope.pop_back();
+                };
+
+conditional:    IF if_start1 '(' bool_expr ')' if_start2
+                block_or_simp_alt ELSE 
+                {
+                    int label = symbolTable.lookupLabel(0);
+                    generator.createElse(label);
+                    
+                } block_or_simp_alt
+                {
+                    int label = symbolTable.lookupLabel(0);
+                    generator.createIfEnd(label, true);
                     Trace("IF-ELSE block");
-                    if($2->type != BOOL_TYPE) yyerror("Expression not a boolean");
-                    generator.subFrame();
-                    generator.write("Lexit"+to_string(labelCount)+":");
-                    generator.addFrame();
+                    if($4->type != BOOL_TYPE) yyerror("Expression not a boolean");
                 }
-                | IF expr if_start block_or_simp
+                | IF if_start1 '(' bool_expr ')' if_start2 block_or_simp_alt
                 {
+                    int label = symbolTable.lookupLabel(0);
+                    generator.createIfEnd(label, false);
                     Trace("IF block");
-                    if($2->type != BOOL_TYPE) yyerror("Expression not a boolean");
+                    if($4->type != BOOL_TYPE) yyerror("Expression not a boolean");
                 };
 
-if_start:       /* empty */
+if_start1:       /* empty: Add label first before using it */
                 {
-                    generator.write("iconst_0");
-                    generator.write("goto Lcomp" + to_string(labelCount));
-                    generator.subFrame();
-                    generator.write("Ltrue"+to_string(labelCount)+":");
-                    generator.addFrame();
-                    generator.write("iconst_1");
-                    generator.subFrame();
-                    generator.write("Lcomp"+to_string(labelCount)+":");
-                    generator.addFrame();
-                    generator.write("ifeq Lfalse"+to_string(labelCount));
-                    labelCount++;
+                    int label = symbolTable.addLabel(0);
+                };
+
+if_start2:      /* empty */
+                {
+                    int label = symbolTable.lookupLabel(0);
+                    generator.createIfStart(label);
                 };
 
  /* Provide option for either block or simple statements */
@@ -226,6 +274,7 @@ simple:         ID '=' expr
                 {
                     Trace("Simple: Array indexing assigment");
                     IDInfo *info = symbolTable.lookup(*$1); 
+
                     if(!info) yyerror("Undeclared identifier");
                     if(info->flag != VAR_FLAG) yyerror("Not a variable");
                     if(info->type != ARRAY_TYPE) yyerror("Not an array");
@@ -236,20 +285,14 @@ simple:         ID '=' expr
                 | PRINT 
                 {
                     Trace("Simple: Print expression");
-                    generator.write("getstatic java.io.PrintStream java.lang.System.out");
-                }
-                expr
-                {
-                    generator.endPrint($3->type, false);
+                    generator.startPrint();
+                } expr { generator.endPrint($3->type, false); 
                 }
                 | PRINTLN 
                 {
                     Trace("Simple: Println expression");
-                    generator.write("getstatic java.io.PrintStream java.lang.System.out");
-                }
-                expr
-                {
-                    generator.endPrint($3->type, true);
+                    generator.startPrint();
+                } expr { generator.endPrint($3->type, true); 
                 }
                 | RETURN
                 {
@@ -259,7 +302,7 @@ simple:         ID '=' expr
                 | RETURN expr    
                 {
                     Trace("Simple: Return expression");
-                    if(!symbolTable.setFuncType($2->type)) yyerror("Return type does not match function return type");
+                    if(!symbolTable.checkFuncType($2->type)) yyerror("Return type does not match function return type");
                     generator.write("ireturn");
                 };
 
@@ -275,17 +318,20 @@ fun_invocation: ID
                     if(!info) yyerror("Undeclared identifier");
                     if(info->flag != FUNCTION_FLAG) yyerror("Not a function");
 
-                    // Check whether num of parameters is equal
-                    vector<IDInfo> params = info->value.arr;
-                    if(params.size() != fCalls[fCalls.size()-1].size()) yyerror("Number of parameters do not match");
-                    for(int i=0;i< params.size();i++){
-                        if(params[i].type != fCalls[fCalls.size()-1].at(i).type) yyerror("Parameter types do not match");
+                    // Check whether num of arguments is equal
+                    vector<IDInfo> args = info->value.arr;
+                    if(args.size() != fCalls[fCalls.size()-1].size()) yyerror("Number of arguments do not match");
+                    for(int i=0;i< args.size();i++){
+                        if(args[i].type != fCalls[fCalls.size()-1].at(i).type) yyerror("Argument types do not match");
                     }
                     $$ = info;
                     fCalls.pop_back();
+
+                    vector<int> argTypes = info->value.getArrTypesID();
+                    generator.createFunInvoc(info->symbol, info->type, argTypes);   // ID, return type, params
                 };
 
-/* Optional comma separated function expressions as parameters */
+/* Optional comma separated function expressions as arguments */
 opt_comma_sep:  comma_sep_expr
                 | /* empty symbol */;
 
@@ -302,6 +348,7 @@ fun_expr:       expr
 /* All possible expresions */
 expr:           const_val
                 {
+                    $$ = $1;
                     CGValue tempVal($1->value.b, $1->value.i, $1->value.s);
                     generator.loadConst($1->type, tempVal);
                 }
@@ -320,7 +367,7 @@ expr:           const_val
                             CGValue tempVal(info->value.b, info->value.i, info->value.s);
                             generator.loadConst(info->type, tempVal);
                         }
-                        else generator.loadLocalVar(info->id);
+                        else generator.loadLocalVar(info->funScope, info->funId);
                     }
                 }
                 | ID '[' expr ']'
@@ -395,9 +442,15 @@ expr:           const_val
                     $$ = info;
                     generator.write("idiv");
                 }
-                | expr '<' expr
+                | bool_expr
+                | '(' expr ')'
                 {
-                    // BOOLEAN EXP
+                    Trace("(Expression) in parentheses");
+                    $$ = $2;
+                };
+
+bool_expr:      expr '<' expr
+                {
                     Trace("Expression < Expression");
                     
                     if($1->type != $3->type) yyerror("Expression types incompatible");
@@ -408,8 +461,8 @@ expr:           const_val
                     $$ = info;
 
                     // Boolean expression code generation
-                    generator.write("isub");
-                    generator.write("iflt Lfalse" + to_string(labelCount));
+                    int label = symbolTable.lookupLabel(0);
+                    generator.createRelational("<", label);
 
                 }
                 | expr LE expr
@@ -423,8 +476,9 @@ expr:           const_val
                     info->type = BOOL_TYPE;
                     $$ = info;
 
-                    generator.write("isub");
-                    generator.write("ifle Lfalse" + to_string(labelCount));
+                    int label = symbolTable.lookupLabel(0);
+                    generator.createRelational("<=", label);
+
                 }
                 | expr '>' expr
                 {
@@ -436,8 +490,8 @@ expr:           const_val
                     info->type = BOOL_TYPE;
                     $$ = info;
 
-                    generator.write("isub");
-                    generator.write("ifgt Ltrue" + to_string(labelCount));
+                    int label = symbolTable.lookupLabel(0);
+                    generator.createRelational(">", label);
                 }
                 | expr GE expr
                 {
@@ -449,8 +503,8 @@ expr:           const_val
                     info->type = BOOL_TYPE;
                     $$ = info;
 
-                    generator.write("isub");
-                    generator.write("ifge Lfalse" + to_string(labelCount));
+                    int label = symbolTable.lookupLabel(0);
+                    generator.createRelational(">=", label);
                 }
                 | expr EQ expr
                 {
@@ -461,8 +515,8 @@ expr:           const_val
                     info->type = BOOL_TYPE;
                     $$ = info;
 
-                    generator.write("isub");
-                    generator.write("ifeq Lfalse" + to_string(labelCount));
+                    int label = symbolTable.lookupLabel(0);
+                    generator.createRelational("==", label);
                 }
                 | expr NEQ expr
                 {
@@ -473,8 +527,8 @@ expr:           const_val
                     info->type = BOOL_TYPE;
                     $$ = info;
 
-                    generator.write("isub");
-                    generator.write("ifne Lfalse" + to_string(labelCount));
+                    int label = symbolTable.lookupLabel(0);
+                    generator.createRelational("!=", label);
                 }
                 | '!' expr
                 {
@@ -507,24 +561,24 @@ expr:           const_val
                     info->type = BOOL_TYPE;
                     $$ = info;
                     generator.write("ior");
-                }
-                | '(' expr ')'
-                {
-                    Trace("(Expression) in parentheses");
-                    $$ = $2;
                 };
 
 /* Block statement */
 block:          '{' 
                 {
                     Trace("Block statement start");
-                    symbolTable.push();             // Block scope
+                    if(newScope.size()>0 && !newScope[newScope.size()-1]) 
+                        symbolTable.push();             // Block scope
+
                 }
                 opt_var_dec opt_statement '}'       // Can have any number of variable/const declarations and/or statements
                 {
                     Trace("Block statement end");
-                    if(dump_flag)symbolTable.dump();
-                    symbolTable.pop();              // Leave block scope
+                    
+                    if(newScope.size()>0 && !newScope[newScope.size()-1]) {
+                        if(dump_flag)symbolTable.dump();
+                        symbolTable.pop();              // Leave block scope
+                    }
                 };
 
 /* 1 or Multiple statements */
@@ -560,6 +614,8 @@ var_dec:        VAR ID ':' var_type
 
                     IDInfo *info = new IDInfo();
                     info->flag = VAR_FLAG;
+                    info->funScope = currFunID;
+
                     int index = symbolTable.insert(*$2, *info);
                     if(!index) yyerror("Variable redefinition");
                     
@@ -567,27 +623,34 @@ var_dec:        VAR ID ':' var_type
                         generator.createField(*$2, false);
                     }
                     else{   // local var
-                        generator.createLocalVar(*$2, index, 0);
+                        int lookupId = symbolTable.lookup(*$2)->funId;
+                        generator.createLocalVar(*$2, currFunID, lookupId, false);
                     }
                 }
-                |VAR ID  '=' const_val
+                |VAR ID '=' expr
                 {
-                    Trace("Variable declaration with const assignment");
+                    Trace("Variable declaration with assignment (either from const/expression)");
                     $4->flag = VAR_FLAG;
+                    $4->funScope = currFunID;
+
                     int index = symbolTable.insert(*$2, *$4);
                     if(!index) yyerror("Variable redefinition");
                     if(symbolTable.isGlobal(*$2)){ // class scope -> global variables
+                        cout << "TopVal: "<< symbolTable.getTopVal() << endl;
                         generator.createField(*$2, false);
                     }
                     else{   // local var
-                        generator.createLocalVar(*$2, index, 0);
+                        int lookupId = symbolTable.lookup(*$2)->funId;
+                        generator.createLocalVar(*$2, currFunID, lookupId, true);
                     }
                 }
-                |VAR ID  ':' var_type '=' const_val
+                |VAR ID  ':' var_type '=' expr
                 {
-                    Trace("Variable declaration with type and const assignment");
+                    Trace("Variable declaration with type and assignment");
                     if($6->type != $4) yyerror("Wrong declared type");
                     $6->flag = VAR_FLAG;
+                    $6->funScope = currFunID;
+
                     int index = symbolTable.insert(*$2, *$6);
                     if(!index) yyerror("Variable redefinition");
                    
@@ -595,7 +658,8 @@ var_dec:        VAR ID ':' var_type
                         generator.createField(*$2, false, $4);
                     }
                     else{   // local var
-                        generator.createLocalVar(*$2, index, 0);
+                        int lookupId = symbolTable.lookup(*$2)->funId;
+                        generator.createLocalVar(*$2, currFunID, lookupId, true);
                     }
                 }
                 |VAR ID ':' var_type '[' INT_CONST ']'
@@ -625,6 +689,20 @@ int yyerror(std::string s)
     exit(1);
 }
 
+string getOutFilename(string filepath){
+    string ofName;
+    size_t slashPos = filepath.rfind('/');
+    size_t dotPos = filepath.rfind('.');
+
+    if(slashPos != -1){
+        ofName = filepath.substr(slashPos+1, dotPos-slashPos-1);
+    }
+    else{   // no relative path
+        ofName = filepath.substr(0,dotPos);
+    }
+    return (ofName+".jasm");
+}
+
 int main(int argc, char* argv[])
 {
     /* open the source program file */
@@ -633,8 +711,9 @@ int main(int argc, char* argv[])
         exit(1);
     }
     yyin = fopen(argv[1], "r");         /* open input file */
-    generator.setOutFile(argv[1]);
-    std::cout << argv[1] << " output\n";
+    
+    outFile.open(getOutFilename(argv[1]));
+    generator.createOutFileHeader();    
 
     /* perform parsing */
     if (yyparse() == 1){                 /* parsing */

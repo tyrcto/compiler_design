@@ -13,7 +13,7 @@ lex.yy.cc: scanner.l
 	flex -o $@ $?
 
 y.tab.cc: parser.y
-	bison -y -o $@ -d $? -v
+	bison -y -o $@ -d $?
 
 clean:
 	rm compiler parser lex.yy.cc y.tab.*
