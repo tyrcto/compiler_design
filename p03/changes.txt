@@ -1,0 +1,14 @@
+Scanner changes:
+- Writes source code to .jasm file as comments.
+- Comments in the source code are altered (comment tags are remove, because javaa.exe can only receive C-like comments)
+
+Parser changes:
+- Code generator used to generate Java Assembly code
+- Code generator has a flag to output more details about the code generated (to turn this feature on, change [flag] in codegenerator.cc to true)
+- Label controller used to control the labels of loops/conditionals
+- Symbol table entries have extra variables so the code generator is able to generate the code properly
+- funVarCount global variable used to keep track of amount of variables in the function scope 
+- Symbol table have new functions:
+    - isGlobal = check if given ID is a global variable
+    - Lable related functions = modify LabelController from SymbolTableList
+- Some rules are removed

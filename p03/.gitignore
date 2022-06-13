@@ -7,7 +7,6 @@
 !parser.y
 !scanner.l
 !codegenerator*
-!javaaPortable/
-!javaaPortable/*
 !.gitignore
 !javaa.exe
+!changes.txt
