@@ -41,7 +41,7 @@ struct IDValue{
 
 struct IDInfo{
     int id = 0;             
-    int funId = 0;
+    int funId = 0;          // ID in its function scope (for code generator)
     string symbol ="";      // symbol name
     int type = INT_TYPE;    // data type
     int flag = VAR_FLAG;    // variable type
@@ -53,8 +53,7 @@ struct IDInfo{
 
 };
 
-static int localVarCount = 0;
-static map<int, int> funVarCount;
+static map<int, int> funVarCount;       // function variable count
 
 class LabelController{
     private:
@@ -105,7 +104,6 @@ class SymbolTableList{
         void push();
         bool pop();
         bool isGlobal(string id);
-        inline int getTopVal(){return top;}
 
         // Function Utils (pass over parameters to desired scope)
         void setFuncType(int type);             // return false if type was defined

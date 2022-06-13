@@ -68,14 +68,12 @@ void CodeGenerator::loadGlobalVar(string id){
 
 void CodeGenerator::createLocalVar(string id, int scopeId, int index, bool isInit){
     if(flag) write("/* Create local var\tscope: " +to_string(scopeId)+"\tindex: " + to_string(index) +" */");
-    cout << "Created local var:\tscope: " << scopeId << "\tindex: " << index << endl;
     if(!isInit) loadInt(0);
     write("istore " + to_string(index));
 }
 
 void CodeGenerator::loadLocalVar(int scopeId, int index){
     if(flag) write("/* Load local var\tscope: " +to_string(scopeId)+"\tindex: " + to_string(index) +" */");
-    cout << "Load local var:\tscope: " << scopeId << "\tindex: " << index << "\n";
     write("iload " +to_string(index));
 }
 

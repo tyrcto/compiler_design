@@ -104,7 +104,6 @@ fun_dec:        FUN ID
                     if(!index) yyerror("Function redefinition");
                     
                     symbolTable.push();                 // Function scope
-                    generator.resetFunVarCount();
                     currFunID++;
                 }
                 '(' opt_args ')' opt_ret_type
@@ -636,7 +635,6 @@ var_dec:        VAR ID ':' var_type
                     int index = symbolTable.insert(*$2, *$4);
                     if(!index) yyerror("Variable redefinition");
                     if(symbolTable.isGlobal(*$2)){ // class scope -> global variables
-                        cout << "TopVal: "<< symbolTable.getTopVal() << endl;
                         generator.createField(*$2, false);
                     }
                     else{   // local var

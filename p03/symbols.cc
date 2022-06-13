@@ -94,7 +94,6 @@ int SymbolTable::insert(string s, int type, int flag, IDValue val, bool init, in
         sTable[s].scope = scope;
         sTable[s].funScope = funScope;
         cout << ">Insert:\n" << sTable[s].getDesc() << endl;
-        localVarCount += 1;
         entryCount += 1;
         return entryCount;
     }
@@ -150,7 +149,6 @@ IDInfo* SymbolTableList::lookup(string s){
     // search through the accessible scope for wanted ID
     for(int i=top;i>=0;i--){
         if(list[i].lookup(s)){ 
-            cout << ">Lookup:\n" << list[i].lookup(s)->getDesc() << endl;
             return list[i].lookup(s);
         }
     }
@@ -169,16 +167,9 @@ bool SymbolTableList::isGlobal(string id){
     if(searchList.size() == 0) return false;
     if(searchList.size() == 1) return (searchList[0]->scope == 1)?true: false;  
     else {
-        cout << "Var from all scopes\nBefore sorting\n";
-         for(auto& s: searchList){
-            cout << s->getDesc() << endl;
-        }
         sort(searchList.begin(), searchList.end(), sortScope);
-        cout << "After sorting\n";
-        for(auto& s: searchList){
-            cout << s->getDesc() << endl;
-        }
-        if(searchList[0]->scope == 1)return true;
+        
+        if(searchList[0]->scope == 1)return true;   // check the most recent/nearest variable with the given id name
         return false;
     }
 }
@@ -189,10 +180,6 @@ int SymbolTableList::insert(string s, IDInfo info){
     }
     else{
         funVarCount[info.funScope] = funVarCount[info.funScope]+1;
-    }
-    cout << "Function var count\nFunID\tCount\n";
-    for(auto&v :funVarCount){
-        cout << v.first << "\t" << v.second <<endl;
     }
     return list[top].insert(s, info.type, info.flag, info.value, info.init, top, info.funScope);
 }
